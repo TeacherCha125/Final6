@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spelling Bee Pro: Teacher's Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { 
+            --primary: #46178f; 
+            --accent: #eb1041; 
+            --bg-img: url('https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2000'); 
+            --font-fam: 'Segoe UI', sans-serif; 
+        }
+        body { font-family: var(--font-fam); margin: 0; background: #1a1a1a; color: white; overflow: hidden; transition: 0.3s; }
+        
+        .admin-layout { display: grid; grid-template-columns: 380px 1fr; height: 100vh; }
+
+        /* Sidebar Styling */
+        .sidebar { background: var(--primary); padding: 25px; box-shadow: 5px 0 15px rgba(0,0,0,0.3); overflow-y: auto; z-index: 10; border-right: 1px solid rgba(255,255,255,0.1); }
+        .sidebar h2 { font-size: 1.6rem; margin-bottom: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .section-label { font-weight: bold; margin: 15px 0 8px; color: rgba(255,255,255,0.8); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Grid and Buttons */
+        .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .btn { border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; font-family: inherit; font-size: 0.9rem; }
+        .btn-class { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-class.active { background: #00e5ff; color: #111; box-shadow: 0 0 15px #00e5ff; border-color: #00e5ff; }
+        
+        .btn-mode { background: rgba(255,255,255,0.15); color: white; width: 100%; margin-bottom: 8px; text-align: left; padding-left: 15px; border: 1px solid transparent; }
+        .btn-mode.active { background: #28a745; border: 1px solid white; }
+
+        .config-box { background: rgba(0,0,0,0.25); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        textarea, select, input { width: 100%; padding: 10px; border-radius: 6px; border: none; margin-top: 5px; box-sizing: border-box; font-family: inherit; font-size: 1rem; }
+
+        /* Host Area Styling */
+        .stage { position: relative; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), var(--bg-img); background-size: cover !important; background-position: center; display: flex; flex-direction: column; align-items: center; padding: 40px; overflow-y: auto; }
+        .settings-btn { position: absolute; top: 25px; right: 25px; width: 35px; height: 35px; fill: white; cursor: pointer; opacity: 0.7; transition: 0.4s; z-index: 100; }
+        .settings-btn:hover { transform: rotate(90deg); opacity: 1; }
+        
+        .timer-circle { width: 120px; height: 120px; border: 6px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; font-weight: bold; background: rgba(0,0,0,0.4); margin-bottom: 20px; }
+        
+        .lobby-container { width: 90%; max-width: 800px; background: rgba(255,255,255,0.95); color: #333; border-radius: 25px; padding: 30px; text-align: center; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        .player-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
+        .player-tag { background: var(--primary); color: white; padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 1.2rem; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Student View Styling */
+        #student-view { display: none; height: 100vh; background: var(--primary); padding: 20px; text-align: center; color: white; position: fixed; top:0; left:0; width:100%; z-index: 1000; }
+        .student-card { background: white; color: #333; padding: 35px; border-radius: 30px; margin-top: 10vh; max-width: 450px; margin-left: auto; margin-right: auto; }
+        .correct-screen { background: #28a745 !important; color: white !important; }
+        .wrong-screen { background: #eb1041 !important; color: white !important; }
+
+        /* Settings Modal */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: #333; padding: 30px; border-radius: 20px; z-index: 2000; width: 400px; box-shadow: 0 0 100px rgba(0,0,0,0.7); }
+        .overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1500; backdrop-filter: blur(5px); }
+        .drop-zone { border: 2px dashed #bbb; padding: 25px; border-radius: 12px; text-align: center; color: #666; cursor: pointer; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+<div class="admin-layout" id="host-ui">
+    <div class="sidebar">
+        <h2>🕹️ Teacher's Panel</h2>
+        
+        <div class="section-label">1. Select Class</div>
+        <div class="btn-grid">
+            <button class="btn btn-class" onclick="setConfig('class','701',this)">701</button>
+            <button class="btn btn-class" onclick="setConfig('class','702',this)">702</button>
+            <button class="btn btn-class" onclick="setConfig('class','703',this)">703</button>
+            <button class="btn btn-class" onclick="setConfig('class','801',this)">801</button>
+            <button class="btn btn-class" onclick="setConfig('class','802',this)">802</button>
+            <button class="btn btn-class" onclick="setConfig('class','803',this)">803</button>
+            <button class="btn btn-class" onclick="setConfig('class','901',this)">901</button>
+            <button class="btn btn-class" onclick="setConfig('class','902',this)">902</button>
+            <button class="btn btn-class" onclick="setConfig('class','903',this)">903</button>
+        </div>
+
+        <div class="section-label">2. Mode Settings</div>
+        <button class="btn btn-mode active" id="mIndiv" onclick="setConfig('mode','indiv',this)">👤 Individual Mode</button>
+        <button class="btn btn-mode" id="mGroup" onclick="setConfig('mode','group',this)">👥 Group Mode (1-7)</button>
+
+        <div class="config-box">
+            <div class="section-label" style="color:white; margin:0;">3. Word Manager</div>
+            <textarea id="wordInput" rows="2" placeholder="Spell1, Spell2, Spell3..." oninput="syncWordList()"></textarea>
+            <select id="activeWordSelect"><option>Select round word...</option></select>
+        </div>
+
+        <div class="config-box">
+            <div class="section-label" style="color:white; margin:0;">4. Score & Timer</div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="number" id="scoreMod" value="100" placeholder="Pts">
+                <input type="number" id="timeMod" value="30" placeholder="Secs">
+            </div>
+        </div>
+
+        <button class="btn" style="background:var(--accent); color:white; width:100%; font-size:1.2rem; margin-top:15px; height: 50px;" onclick="startTheRound()">🔥 START ROUND</button>
+        <button class="btn" style="background:#444; color:white; width:100%; margin-top:10px;" onclick="exportFinalResults()">💾 END & DOWNLOAD</button>
+    </div>
+
+    <div class="stage">
+        <svg class="settings-btn" viewBox="0 0 24 24" onclick="toggleSettingsModal()"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.07-.47 0-.59.22L3.09 6.95c-.12.21-.07.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.07.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        
+        <h1 id="stageTitleHeader">Select a Class</h1>
+        <div class="timer-circle" id="mainClockDisplay">30</div>
+        
+        <div id="hostLobby" class="lobby-container">
+            <h3>LOBBY: Scan to Join</h3>
+            <div id="qrcode" style="display:inline-block; margin:15px; border: 5px solid var(--primary); padding: 5px; background: white;"></div>
+            <div class="player-list" id="joinedPlayersBox"></div>
+        </div>
+
+        <div id="hostRankings" class="lobby-container" style="display:none;">
+            <h2 style="margin-bottom:20px;">🏆 Leaderboard</h2>
+            <table style="width:100%; text-align:left; border-collapse: collapse;">
+                <thead style="border-bottom: 2px solid #333;"><tr><th>Rank</th><th>Name</th><th>Speed</th><th>Score</th></tr></thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="student-view">
+    <div class="student-card" id="stuContentCard">
+        <div id="stuLoginBox">
+            <h2 style="margin-bottom:10px;">Enter the Game</h2>
+            <div id="stuInputArea"></div>
+            <button class="btn" style="background:var(--primary); color:white; width:100%; margin-top:20px; height: 50px;" onclick="processJoin()">JOIN NOW</button>
+        </div>
+
+        <div id="stuLobbyBox" style="display:none;">
+            <h3>Waiting Room</h3>
+            <p>You are successfully in the lobby!</p>
+            <div id="stuInputModule" style="opacity: 0.4; pointer-events: none; margin-top: 30px;">
+                <p><strong>Spelling Round Input:</strong></p>
+                <input type="text" id="stuAnswerInput" placeholder="Wait for Start..." style="border: 2px solid #ddd; padding: 15px;">
+                <button class="btn" id="stuSubmitBtn" style="background:var(--accent); color:white; width:100%; margin-top:15px; height: 50px;" onclick="submitStuAnswer()">SUBMIT ANSWER</button>
+            </div>
+        </div>
+
+        <div id="stuFeedbackBox" style="display:none; padding: 20px;"></div>
+    </div>
+</div>
+
+<div class="overlay" onclick="toggleSettingsModal()"></div>
+<div class="modal" id="settingsMenu">
+    <h3>🎨 UI Customization</h3>
+    <label>Change Background</label>
+    <div id="dropZoneBox" class="drop-zone">Drag & Drop Image Here</div>
+    <input type="text" id="bgUrlInput" placeholder="Or paste image URL">
+    
+    <label style="display:block; margin-top:15px;">Google Drive Sync Folder</label>
+    <input type="text" id="driveLinkInput" placeholder="Paste link here">
+
+    <label style="display:block; margin-top:15px;">Theme Color</label>
+    <input type="color" id="themeColorInput" value="#46178f" style="height:45px;">
+    
+    <label style="display:block; margin-top:15px;">Font Style</label>
+    <select id="fontStyleInput">
+        <option value="'Segoe UI', sans-serif">Modern (Segoe)</option>
+        <option value="'Georgia', serif">Elegant (Georgia)</option>
+        <option value="'Comic Sans MS', cursive">Playful (Comic Sans)</option>
+    </select>
+    <button class="btn" style="background:var(--primary); color:white; width:100%; margin-top:25px; height: 45px;" onclick="applyUISettings()">SAVE ALL SETTINGS</button>
+</div>
+
+<script>
+    // Master State Object
+    let game = {
+        class: '',
+        mode: 'indiv',
+        players: [],
+        submissions: [],
+        currentWord: '',
+        startTime: 0,
+        roundInProgress: false
+    };
+
+    // Auto-Detect Role based on URL
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('role') === 'student') {
+        document.getElementById('host-ui').style.display = 'none';
+        document.getElementById('student-view').style.display = 'block';
+        
+        const mode = params.get('mode');
+        const inputDiv = document.getElementById('stuInputArea');
+        if(mode === 'group') {
+            inputDiv.innerHTML = `<select id="stuNameInput"><option value="">-- Choose Group --</option>${[1,2,3,4,5,6,7].map(n=>`<option value="Group ${n}">Group ${n}</option>`).join('')}</select>`;
+        } else {
+            inputDiv.innerHTML = `<input type="text" id="stuNameInput" placeholder="Enter Your Full Name">`;
+        }
+    }
+
+    // Teacher Setup Functions
+    function setConfig(key, val, el) {
+        game[key] = val;
+        el.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        if(key === 'class') document.getElementById('stageTitleHeader').innerText = "Class " + val;
+        generateGameQR();
+    }
+
+    function generateGameQR() {
+        if(!game.class) return;
+        const qrContainer = document.getElementById('qrcode');
+        qrContainer.innerHTML = "";
+        new QRCode(qrContainer, {
+            text: `${window.location.href.split('?')[0]}?role=student&mode=${game.mode}&class=${game.class}`,
+            width: 170, height: 170
+        });
+    }
+
+    function syncWordList() {
+        const words = document.getElementById('wordInput').value.split(',').map(w => w.trim()).filter(w => w);
+        const dropdown = document.getElementById('activeWordSelect');
+        dropdown.innerHTML = '<option>Select round word...</option>';
+        words.forEach(w => dropdown.innerHTML += `<option value="${w}">${w}</option>`);
+    }
+
+    // Student Logic
+    function processJoin() {
+        const name = document.getElementById('stuNameInput').value;
+        if(!name) return alert("Please enter your name or group!");
+        
+        document.getElementById('stuLoginBox').style.display = 'none';
+        document.getElementById('stuLobbyBox').style.display = 'block';
+        
+        // Simulation for Local Demo: Broadcast to Host list
+        broadcastJoinToHost(name);
+    }
+
+    function broadcastJoinToHost(name) {
+        if(!game.players.includes(name)) {
+            game.players.push(name);
+            const box = document.getElementById('joinedPlayersBox');
+            box.innerHTML += `<div class="player-tag">${name}</div>`;
+        }
+    }
+
+    // Round Logic
+    function startTheRound() {
+        game.currentWord = document.getElementById('activeWordSelect').value;
+        if(game.currentWord.includes('Select')) return alert("Please select a word from the Manager!");
+
+        game.submissions = [];
+        game.roundInProgress = true;
+        game.startTime = Date.now();
+        
+        document.getElementById('hostLobby').style.display = 'none';
+        document.getElementById('hostRankings').style.display = 'none';
+
+        // Unlock Student UI (In local simulation)
+        const inputMod = document.getElementById('stuInputModule');
+        if(inputMod) {
+            inputMod.style.opacity = "1";
+            inputMod.style.pointerEvents = "auto";
+            document.getElementById('stuAnswerInput').placeholder = "Start Typing...";
+            document.getElementById('stuAnswerInput').focus();
+        }
+
+        let timeRemaining = parseInt(document.getElementById('timeMod').value);
+        const clockInterval = setInterval(() => {
+            timeRemaining--;
+            document.getElementById('mainClockDisplay').innerText = timeRemaining;
+            if(timeRemaining <= 0) {
+                clearInterval(clockInterval);
+                finishRound();
+            }
+        }, 1000);
+    }
+
+    function submitStuAnswer() {
+        const answer = document.getElementById('stuAnswerInput').value;
+        const elapsed = ((Date.now() - game.startTime) / 1000).toFixed(2);
+        const name = document.getElementById('stuNameInput').value;
+
+        game.submissions.push({ name, answer, time: elapsed });
+
+        // Visual feedback of submission
+        document.getElementById('stuInputModule').style.opacity = "0.4";
+        document.getElementById('stuInputModule').style.pointerEvents = "none";
+        document.getElementById('stuAnswerInput').value = "";
+        document.getElementById('stuAnswerInput').placeholder = "Submitted! Wait...";
+    }
+
+    function finishRound() {
+        game.roundInProgress = false;
+        const ptsValue = parseInt(document.getElementById('scoreMod').value);
+        const correctSpell = game.currentWord.toLowerCase().trim();
+
+        // Grade Submissions
+        game.submissions.forEach(s => {
+            s.isCorrect = s.answer.toLowerCase().trim() === correctSpell;
+            s.points = s.isCorrect ? ptsValue : 0;
+        });
+
+        // Update Host Leaderboard
+        document.getElementById('hostRankings').style.display = 'block';
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = "";
+        game.submissions.sort((a,b) => b.points - a.points || a.time - b.time);
+        game.submissions.forEach((s, i) => {
+            tbody.innerHTML += `<tr style="border-bottom: 1px solid #ddd; height: 40px;">
+                <td><strong>${i+1}</strong></td><td>${s.name}</td><td>${s.time}s</td><td>${s.points}</td>
+            </tr>`;
+        });
+
+        // Automatic Reveal for Student Screen
+        const feedback = document.getElementById('stuFeedbackBox');
+        if(feedback) {
+            const studentName = document.getElementById('stuNameInput').value;
+            const myResult = game.submissions.find(s => s.name === studentName);
+            document.getElementById('stuLobbyBox').style.display = 'none';
+            feedback.style.display = 'block';
+            
+            const card = document.getElementById('stuContentCard');
+            if(myResult && myResult.isCorrect) {
+                card.classList.add('correct-screen');
+                feedback.innerHTML = `<h1>✅ CORRECT</h1><p>The word was: <strong>${game.currentWord}</strong></p>`;
+            } else {
+                card.classList.add('wrong-screen');
+                feedback.innerHTML = `<h1>❌ WRONG</h1><p>Correct spelling: <strong>${game.currentWord}</strong></p>`;
+            }
+            feedback.innerHTML += `<button class="btn" style="margin-top:20px;" onclick="resetStudentForNext()">NEXT ROUND</button>`;
+        }
+    }
+
+    function resetStudentForNext() {
+        document.getElementById('stuContentCard').classList.remove('correct-screen', 'wrong-screen');
+        document.getElementById('stuFeedbackBox').style.display = 'none';
+        document.getElementById('stuLobbyBox').style.display = 'block';
+        document.getElementById('stuAnswerInput').placeholder = "Wait for Start...";
+    }
+
+    // UI Customization Functions
+    function toggleSettingsModal() {
+        const modal = document.getElementById('settingsMenu').style;
+        const overlay = document.querySelector('.overlay').style;
+        const isOpen = modal.display === 'block';
+        modal.display = isOpen ? 'none' : 'block';
+        overlay.display = isOpen ? 'none' : 'block';
+    }
+
+    function applyUISettings() {
+        const bg = document.getElementById('bgUrlInput').value;
+        const color = document.getElementById('themeColorInput').value;
+        const font = document.getElementById('fontStyleInput').value;
+        
+        if(bg) document.documentElement.style.setProperty('--bg-img', `url('${bg}')`);
+        document.documentElement.style.setProperty('--primary', color);
+        document.documentElement.style.setProperty('--font-fam', font);
+        toggleSettingsModal();
+    }
+
+    function exportFinalResults() {
+        const drive = document.getElementById('driveLinkInput').value;
+        if(drive) window.open(drive, '_blank');
+        
+        let csvContent = "Rank,Name,Time,Score\n";
+        game.submissions.forEach((s, i) => {
+            csvContent += `${i+1},${s.name},${s.time},${s.points}\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Class_${game.class}_Results.csv`;
+        link.click();
+    }
+
+    // Drag and Drop Logic
+    const dzone = document.getElementById('dropZoneBox');
+    dzone.ondragover = (e) => { e.preventDefault(); dzone.style.background = "#eef"; };
+    dzone.ondrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => document.documentElement.style.setProperty('--bg-img', `url('${ev.target.result}')`);
+            reader.readAsDataURL(file);
+        }
+    };
+</script>
+</body>
+</html>
